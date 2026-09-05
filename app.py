@@ -13,12 +13,19 @@ st.set_page_config(page_title="Rota Pro Mobile", layout="centered")
 CHAVE_API = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 ARQUIVO_HISTORICO = "historico_lote_flex.csv"
 
-# CSS para otimizar o layout lado a lado no celular
+# CSS ultra compacto para forçar lado a lado mesmo em telas menores de celular
 st.markdown("""
     <style>
         .stButton button { width: 100%; border-radius: 6px; font-weight: bold; }
-        .block-container { padding-top: 0.8rem; padding-bottom: 2rem; max-width: 700px; }
-        div[data-testid="column"] { width: 50% !important; flex: 50% !important; min-width: 50% !important; }
+        .block-container { padding-top: 0.5rem; padding-bottom: 2rem; max-width: 700px; }
+        /* Força colunas lado a lado no mobile */
+        [data-testid="column"] {
+            width: 50% !important;
+            flex: 1 1 50% !important;
+            min-width: 120px !important;
+            padding: 0px 4px !important;
+        }
+        div.row-widget.stRadio > div { flex-direction: row; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -53,53 +60,51 @@ with aba_principal:
 
     st.markdown("### 📸 Novo Pacote")
 
-    with st.form("form_duplo_lote", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        
-        # --- COLUNA 1: ENDEREÇO ---
-        with col1:
-            st.markdown("##### 📄 1. Endereço")
-            tipo_origem_end = st.radio("Origem:", ["Câmera", "Upload"], key="origem_end", horizontal=True)
-            if tipo_origem_end == "Câmera":
-                foto_end = st.camera_input("Endereço", key="cam_e")
-            else:
-                foto_end = st.file_uploader("Arq Endereço", type=["png", "jpg", "jpeg"], key="up_e")
+    # Colunas lado a lado forçadas para mobile
+    col1, col2 = st.columns(2)
+    
+    # --- COLUNA 1: ENDEREÇO ---
+    with col1:
+        st.markdown("##### 📄 Endereço")
+        tipo_origem_end = st.radio("Origem E:", ["Câmera", "Upload"], key="origem_end", horizontal=True, label_visibility="collapsed")
+        if tipo_origem_end == "Câmera":
+            foto_end = st.camera_input("Endereço", key="cam_e", label_visibility="collapsed")
+        else:
+            foto_end = st.file_uploader("Arq End", type=["png", "jpg", "jpeg"], key="up_e", label_visibility="collapsed")
 
-        # --- COLUNA 2: SEQUÊNCIA ---
-        with col2:
-            st.markdown("##### 🔢 2. Sequência")
-            tipo_origem_seq = st.radio("Origem:", ["Câmera", "Upload"], key="origem_seq", horizontal=True)
-            if tipo_origem_seq == "Câmera":
-                foto_seq = st.camera_input("Sequência", key="cam_s")
-            else:
-                foto_seq = st.file_uploader("Arq Sequência", type=["png", "jpg", "jpeg"], key="up_s")
+    # --- COLUNA 2: SEQUÊNCIA ---
+    with col2:
+        st.markdown("##### 🔢 Sequência")
+        tipo_origem_seq = st.radio("Origem S:", ["Câmera", "Upload"], key="origem_seq", horizontal=True, label_visibility="collapsed")
+        if tipo_origem_seq == "Câmera":
+            foto_seq = st.camera_input("Seq", key="cam_s", label_visibility="collapsed")
+        else:
+            foto_seq = st.file_uploader("Arq Seq", type=["png", "jpg", "jpeg"], key="up_s", label_visibility="collapsed")
 
-        st.markdown("")
-        btn_adicionar = st.form_submit_button("📥 Adicionar à Fila", type="primary")
-        
-        if btn_adicionar:
-            if foto_end or foto_seq:
-                st.session_state.pacotes.append({
-                    "Seq": "PENDENTE_PROCESSAR",
-                    "Rastreio": f"PKG_{datetime.now().strftime('%H%M%S')}",
-                    "Endereço": "Aguardando IA...",
-                    "CEP": "",
-                    "Horário": datetime.now().strftime("%H:%M:%S"),
-                    "Status": "Pendente",
-                    "bytes_end": foto_end.getvalue() if foto_end else None,
-                    "bytes_seq": foto_seq.getvalue() if foto_seq else None
-                })
-                salvar_historico()
-                st.success("Adicionado à fila!")
-                st.rerun()
-            else:
-                st.warning("Envie ao menos uma foto.")
+    st.markdown("")
+    if st.button("📥 Adicionar à Fila", type="primary", use_container_width=True):
+        if foto_end or foto_seq:
+            st.session_state.pacotes.append({
+                "Seq": "PENDENTE_PROCESSAR",
+                "Rastreio": f"PKG_{datetime.now().strftime('%H%M%S')}",
+                "Endereço": "Aguardando IA...",
+                "CEP": "",
+                "Horário": datetime.now().strftime("%H:%M:%S"),
+                "Status": "Pendente",
+                "bytes_end": foto_end.getvalue() if foto_end else None,
+                "bytes_seq": foto_seq.getvalue() if foto_seq else None
+            })
+            salvar_historico()
+            st.success("Adicionado à fila com sucesso!")
+            st.rerun()
+        else:
+            st.warning("Envie ao menos uma foto antes de adicionar.")
 
     pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq") == "PENDENTE_PROCESSAR"]
     
     if pendentes_IA:
         st.markdown("---")
-        if st.button(f"⚡ Processar Fila ({len(pendentes_IA)} itens) com IA", type="primary"):
+        if st.button(f"⚡ Processar Fila ({len(pendentes_IA)} itens) com IA", type="primary", use_container_width=True):
             with st.spinner("Processando..."):
                 try:
                     genai.configure(api_key=CHAVE_API)
@@ -152,13 +157,13 @@ with aba_principal:
         if not pendentes_df.empty:
             st.markdown("---")
             link_waze = f"https://waze.com/ul?q={urllib.parse.quote(str(pendentes_df.iloc[0]['Endereço']))}&navigate=yes"
-            st.link_button(f"📍 Abrir Waze (Próximo: {pendentes_df.iloc[0]['Seq']})", link_waze, type="primary")
+            st.link_button(f"📍 Abrir Waze (Próximo: {pendentes_df.iloc[0]['Seq']})", link_waze, type="primary", use_container_width=True)
 
 with aba_visual:
     st.markdown("### 👁️ Otimizador de Print")
     p_partida = st.text_input("Partida:", placeholder="Ex: Pino 1")
     print_m = st.file_uploader("Print do Mapa", type=["png", "jpg", "jpeg"])
-    if print_m and st.button("🤖 Recalcular"):
+    if print_m and st.button("🤖 Recalcular", use_container_width=True):
         with st.spinner("Analisando..."):
             genai.configure(api_key=CHAVE_API)
             resp = genai.GenerativeModel('gemini-3.6-flash').generate_content([f"Partida: {p_partida}. Otimize a rota.", Image.open(print_m)])
