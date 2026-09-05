@@ -13,19 +13,12 @@ st.set_page_config(page_title="Rota Pro Mobile", layout="centered")
 CHAVE_API = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 ARQUIVO_HISTORICO = "historico_lote_flex.csv"
 
-# CSS ultra compacto para forçar lado a lado mesmo em telas menores de celular
+# CSS para customizar botões e espaçamento ideal para celular
 st.markdown("""
     <style>
         .stButton button { width: 100%; border-radius: 6px; font-weight: bold; }
         .block-container { padding-top: 0.5rem; padding-bottom: 2rem; max-width: 700px; }
-        /* Força colunas lado a lado no mobile */
-        [data-testid="column"] {
-            width: 50% !important;
-            flex: 1 1 50% !important;
-            min-width: 120px !important;
-            padding: 0px 4px !important;
-        }
-        div.row-widget.stRadio > div { flex-direction: row; }
+        div[data-testid="stHorizontalBlock"] { display: flex; gap: 8px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -60,58 +53,80 @@ with aba_principal:
 
     st.markdown("### 📸 Novo Pacote")
 
-    # Colunas lado a lado forçadas para mobile
-    col1, col2 = st.columns(2)
-    
-    # --- COLUNA 1: ENDEREÇO ---
-    with col1:
-        st.markdown("##### 📄 Endereço")
-        tipo_origem_end = st.radio("Origem E:", ["Câmera", "Upload"], key="origem_end", horizontal=True, label_visibility="collapsed")
-        if tipo_origem_end == "Câmera":
-            foto_end = st.camera_input("Endereço", key="cam_e", label_visibility="collapsed")
-        else:
-            foto_end = st.file_uploader("Arq End", type=["png", "jpg", "jpeg"], key="up_e", label_visibility="collapsed")
+    # Abas ou blocos organizados para evitar conflito de câmera dupla no mobile
+    modo_entrada = st.radio("Método de Captura:", ["📸 Usar Câmera", "📁 Upload de Arquivos / Digitação Manual"], horizontal=True)
 
-    # --- COLUNA 2: SEQUÊNCIA ---
-    with col2:
-        st.markdown("##### 🔢 Sequência")
-        tipo_origem_seq = st.radio("Origem S:", ["Câmera", "Upload"], key="origem_seq", horizontal=True, label_visibility="collapsed")
-        if tipo_origem_seq == "Câmera":
-            foto_seq = st.camera_input("Seq", key="cam_s", label_visibility="collapsed")
-        else:
-            foto_seq = st.file_uploader("Arq Seq", type=["png", "jpg", "jpeg"], key="up_s", label_visibility="collapsed")
+    foto_end = None
+    foto_seq = None
+    manual_end = ""
+    manual_seq = ""
+
+    if modo_entrada == "📸 Usar Câmera":
+        st.info("💡 Como o navegador bloqueia duas câmeras juntas, tire uma foto por vez abaixo:")
+        
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.markdown("##### 📄 1. Endereço")
+            foto_end = st.camera_input("Foto Endereço", key="cam_unica_e")
+        with col_c2:
+            st.markdown("##### 🔢 2. Sequência")
+            foto_seq = st.camera_input("Foto Sequência", key="cam_unica_s")
+            
+        st.markdown("---")
+        st.markdown("##### ✍️ Ou digite manualmente se preferir:")
+        manual_end = st.text_input("Endereço Manual (Opcional)", placeholder="Ex: Rua A, 100")
+        manual_seq = st.text_input("Sequência Manual (Opcional)", placeholder="Ex: #A-1")
+
+    else:
+        col_u1, col_u2 = st.columns(2)
+        with col_u1:
+            st.markdown("##### 📄 1. Endereço")
+            tipo_e = st.radio("Tipo E:", ["Arquivo", "Texto"], horizontal=True, key="tipo_e")
+            if tipo_e == "Arquivo":
+                foto_end = st.file_uploader("Arq End", type=["png", "jpg", "jpeg"], key="up_e")
+            else:
+                manual_end = st.text_input("Digite o Endereço:", key="txt_end")
+
+        with col_u2:
+            st.markdown("##### 🔢 2. Sequência")
+            tipo_s = st.radio("Tipo S:", ["Arquivo", "Texto"], horizontal=True, key="tipo_s")
+            if tipo_s == "Arquivo":
+                foto_seq = st.file_uploader("Arq Seq", type=["png", "jpg", "jpeg"], key="up_s")
+            else:
+                manual_seq = st.text_input("Digite a Sequência:", key="txt_seq")
 
     st.markdown("")
-    if st.button("📥 Adicionar à Fila", type="primary", use_container_width=True):
-        if foto_end or foto_seq:
+    if st.button("📥 Adicionar Pacote à Fila", type="primary", use_container_width=True):
+        if foto_end or foto_seq or manual_end or manual_seq:
             st.session_state.pacotes.append({
-                "Seq": "PENDENTE_PROCESSAR",
+                "Seq": manual_seq if manual_seq else "PENDENTE_PROCESSAR",
                 "Rastreio": f"PKG_{datetime.now().strftime('%H%M%S')}",
-                "Endereço": "Aguardando IA...",
+                "Endereço": manual_end if manual_end else "Aguardando IA...",
                 "CEP": "",
                 "Horário": datetime.now().strftime("%H:%M:%S"),
                 "Status": "Pendente",
                 "bytes_end": foto_end.getvalue() if foto_end else None,
-                "bytes_seq": foto_seq.getvalue() if foto_seq else None
+                "bytes_seq": foto_seq.getvalue() if foto_seq else None,
+                "manual": True if (manual_end and manual_seq) else False
             })
             salvar_historico()
-            st.success("Adicionado à fila com sucesso!")
+            st.success("Pacote adicionado com sucesso!")
             st.rerun()
         else:
-            st.warning("Envie ao menos uma foto antes de adicionar.")
+            st.warning("Forneça pelo menos a foto ou o texto de endereço/sequência.")
 
-    pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq") == "PENDENTE_PROCESSAR"]
+    pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq") == "PENDENTE_PROCESSAR" or "Aguardando" in p.get("Endereço", "")]
     
     if pendentes_IA:
         st.markdown("---")
-        if st.button(f"⚡ Processar Fila ({len(pendentes_IA)} itens) com IA", type="primary", use_container_width=True):
-            with st.spinner("Processando..."):
+        if st.button(f"⚡ Processar Fila com IA ({len(pendentes_IA)} pendentes)", type="primary", use_container_width=True):
+            with st.spinner("Processando imagens com IA..."):
                 try:
                     genai.configure(api_key=CHAVE_API)
                     model = genai.GenerativeModel('gemini-3.6-flash')
                     
                     for p in st.session_state.pacotes:
-                        if p.get("Seq") == "PENDENTE_PROCESSAR":
+                        if p.get("Seq") == "PENDENTE_PROCESSAR" or "Aguardando" in p.get("Endereço", ""):
                             imgs = []
                             if p.get("bytes_end"): imgs.append(Image.open(io.BytesIO(p["bytes_end"])))
                             if p.get("bytes_seq"): imgs.append(Image.open(io.BytesIO(p["bytes_seq"])))
@@ -119,18 +134,20 @@ with aba_principal:
                             if imgs:
                                 resp = model.generate_content(["Extraia rua, numero, bairro, cidade, estado, cep e sequencia (#A-1) em JSON puro com as chaves: rua, numero, bairro, cidade, estado, cep, sequencia.", *imgs])
                                 dados = json.loads(resp.text.strip().replace("```json", "").replace("```", ""))
-                                p["Seq"] = dados.get('sequencia') or "#S-N"
-                                r_rua, r_num, r_bairro, r_cep = dados.get('rua', ''), dados.get('numero', ''), dados.get('bairro', ''), dados.get('cep', '')
-                                p["Endereço"] = f"{r_rua}, {r_num} - {r_bairro}, {r_cep}" if r_rua else "Endereço não identificado"
-                                p["CEP"] = r_cep
+                                if p.get("Seq") == "PENDENTE_PROCESSAR":
+                                    p["Seq"] = dados.get('sequencia') or "#S-N"
+                                if "Aguardando" in p.get("Endereço", ""):
+                                    r_rua, r_num, r_bairro, r_cep = dados.get('rua', ''), dados.get('numero', ''), dados.get('bairro', ''), dados.get('cep', '')
+                                    p["Endereço"] = f"{r_rua}, {r_num} - {r_bairro}, {r_cep}" if r_rua else "Endereço não identificado"
+                                    p["CEP"] = r_cep
                             p.pop("bytes_end", None)
                             p.pop("bytes_seq", None)
                             
                     salvar_historico()
-                    st.success("Processado!")
+                    st.success("Fila processada com sucesso!")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Erro: {e}")
+                    st.error(f"Erro ao processar: {e}")
 
     st.markdown("---")
     st.markdown("### 📋 Lista de Pacotes")
