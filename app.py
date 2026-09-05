@@ -13,13 +13,15 @@ st.set_page_config(page_title="Rota Pro Mobile", layout="centered")
 CHAVE_API = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 ARQUIVO_HISTORICO = "historico_lote_flex.csv"
 
-# CSS customizado para compactar e melhorar a visão no celular
-st.markdown("""
+# CSS customizado para forçar colunas lado a lado bonitas no celular e compactar espaço
+st.streamlit_style = """
     <style>
         .stButton button { width: 100%; border-radius: 6px; font-weight: bold; }
-        .block-container { padding-top: 1rem; padding-bottom: 2rem; max-width: 700px; }
+        .block-container { padding-top: 0.8rem; padding-bottom: 2rem; max-width: 700px; }
+        div[data-testid="column"] { width: 50% !important; flex: 50% !important; min-width: 50% !important; }
     </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(st.streamlit_style, unsafe_allow_html=True)
 
 st.title("📦 Rota Pro - Mobile")
 
@@ -53,14 +55,28 @@ with aba_principal:
     st.markdown("### 📸 Novo Pacote")
 
     with st.form("form_duplo_lote", clear_on_submit=True):
-        st.markdown("#### 📄 1. Endereço")
-        tipo_origem_end = st.radio("Origem Endereço:", ["Câmera", "Upload"], key="origem_end", horizontal=True)
-        foto_end = st.camera_input("Foto Endereço", key="cam_e") if tipo_origem_end == "Câmera" else st.file_uploader("Arquivo Endereço", type=["png", "jpg", "jpeg"], key="up_e")
+        # Colunas lado a lado otimizadas para telas menores
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("##### 📄 1. Endereço")
+            tipo_origem_end = st.radio("Origem:", ["Câmera", "Upload"], key="origem_end", horizontal=True)
+            if tipo_origem_end == "Câmera":
+                # Força a câmera traseira (environment)
+                foto_end = st.camera_input("Endereço", key="cam_e", facing_mode="environment")
+            else:
+                foto_end = st.file_uploader("Arq Endereço", type=["png", "jpg", "jpeg"], key="up_e")
 
-        st.markdown("#### 🔢 2. Sequência (#A-1)")
-        tipo_origem_seq = st.radio("Origem Sequência:", ["Câmera", "Upload"], key="origem_seq", horizontal=True)
-        foto_seq = st.camera_input("Foto Sequência", key="cam_s") if tipo_origem_seq == "Câmera" else st.file_uploader("Arquivo Sequência", type=["png", "jpg", "jpeg"], key="up_s")
+        with col2:
+            st.markdown("##### 🔢 2. Sequência")
+            tipo_origem_seq = st.radio("Origem:", ["Câmera", "Upload"], key="origem_seq", horizontal=True)
+            if tipo_origem_seq == "Câmera":
+                # Força a câmera traseira (environment)
+                foto_seq = st.camera_input("Sequência", key="cam_s", facing_mode="environment")
+            else:
+                foto_seq = st.file_uploader("Arq Sequência", type=["png", "jpg", "jpeg"], key="up_s")
 
+        st.markdown("")
         btn_adicionar = st.form_submit_button("📥 Adicionar à Fila", type="primary")
         
         if btn_adicionar:
@@ -81,7 +97,6 @@ with aba_principal:
             else:
                 st.warning("Envie ao menos uma foto.")
 
-    # Correção do parêntese feita aqui:
     pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq") == "PENDENTE_PROCESSAR"]
     
     if pendentes_IA:
