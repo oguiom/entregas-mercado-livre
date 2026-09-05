@@ -8,20 +8,20 @@ import urllib.parse
 import os
 import io
 
-st.set_page_config(page_title="Rota Pro Mobile - 2 Passos", layout="centered")
+st.set_page_config(page_title="Rota Pro Mobile", layout="centered")
 
 CHAVE_API = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 ARQUIVO_HISTORICO = "historico_lote_2passos.csv"
 
-# CSS para deixar a interface limpa e otimizada para toque no celular
+# CSS limpo para celular
 st.markdown("""
     <style>
-        .stButton button { width: 100%; border-radius: 8px; font-weight: bold; height: 3em; }
+        .stButton button { width: 100%; border-radius: 8px; font-weight: bold; height: 3.2em; }
         .block-container { padding-top: 0.5rem; padding-bottom: 2rem; max-width: 700px; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📦 Rota Pro - Cadastro em 2 Passos")
+st.title("📦 Rota Pro - 2 Passos")
 
 if 'pacotes' not in st.session_state:
     if os.path.exists(ARQUIVO_HISTORICO):
@@ -33,11 +33,12 @@ if 'pacotes' not in st.session_state:
     else:
         st.session_state.pacotes = []
 
-# Estado de controle do fluxo de 2 passos
 if 'etapa_cadastro' not in st.session_state:
     st.session_state.etapa_cadastro = 1
-if 'temp_bytes_end' not in st.session_state:
-    st.session_state.temp_bytes_end = None
+if 'temp_end' not in st.session_state:
+    st.session_state.temp_end = None
+if 'temp_end_tipo' not in st.session_state:
+    st.session_state.temp_end_tipo = None
 
 def salvar_historico():
     if st.session_state.pacotes:
@@ -48,97 +49,108 @@ def salvar_historico():
 def limpar_tabela():
     st.session_state.pacotes = []
     st.session_state.etapa_cadastro = 1
-    st.session_state.temp_bytes_end = None
+    st.session_state.temp_end = None
+    st.session_state.temp_end_tipo = None
     if os.path.exists(ARQUIVO_HISTORICO):
         os.remove(ARQUIVO_HISTORICO)
 
-aba_principal, aba_visual = st.tabs(["🚀 Cadastro Rápido", "👁️ Mapa"])
+aba_principal, aba_visual = st.tabs(["🚀 Cadastro", "👁️ Mapa"])
 
 with aba_principal:
     with st.expander("⚙️ Opções"):
         st.button("Limpar Todos os Pacotes", on_click=limpar_tabela)
 
-    # --- FLUXO EM 2 PASSOS ---
+    # --- PASSO 1: ENDEREÇO ---
     if st.session_state.etapa_cadastro == 1:
-        st.markdown("### 📄 Passo 1 de 2: Etiqueta de Endereço")
+        st.markdown("### 📄 Passo 1 de 2: Endereço")
+        st.info("💡 Dica: Use 'Tirar Foto / Upload' para abrir a câmera nativa do seu celular instantaneamente.")
         
-        metodo_1 = st.radio("Como quer enviar o Endereço?", ["📸 Câmera", "📁 Upload de Arquivo", "✍️ Digitar Manual"], horizontal=True, key="m1")
+        tipo_envio_e = st.radio("Como informar o Endereço?", ["📷 Tirar Foto / Upload", "✍️ Digitar Manual"], horizontal=True)
         
-        foto_end = None
+        val_end = None
         texto_end = ""
         
-        if metodo_1 == "📸 Câmera":
-            foto_end = st.camera_input("Tirar foto do Endereço", key="cam_1")
-        elif metodo_1 == "📁 Upload de Arquivo":
-            foto_end = st.file_uploader("Selecionar foto do Endereço", type=["png", "jpg", "jpeg"], key="up_1")
+        if tipo_envio_e == "📷 Tirar Foto / Upload":
+            val_end = st.file_uploader("Selecione ou tire a foto da rua/CEP", type=["png", "jpg", "jpeg"], key="up_e")
         else:
-            texto_end = st.text_input("Digite o Endereço completo:", placeholder="Ex: Rua Cardeal Arcoverde, 174")
+            texto_end = st.text_input("Digite o Endereço:", placeholder="Ex: Rua Cardeal Arcoverde, 174")
 
         st.markdown("")
         if st.button("Avançar para Sequência ➡️", type="primary"):
-            if foto_end or texto_end:
-                if foto_end:
-                    st.session_state.temp_bytes_end = foto_end.getvalue()
+            if val_end or texto_end:
+                if val_end:
+                    st.session_state.temp_end = val_end.getvalue()
+                    st.session_state.temp_end_tipo = "foto"
                 else:
-                    st.session_state.temp_bytes_end = texto_end # Armazena texto temporariamente se for manual
+                    st.session_state.temp_end = texto_end
+                    st.session_state.temp_end_tipo = "texto"
+                
                 st.session_state.etapa_cadastro = 2
                 st.rerun()
             else:
-                st.warning("Por favor, capture ou digite o endereço antes de avançar.")
+                st.warning("⚠️ Insira a foto ou digite o endereço para continuar.")
 
+    # --- PASSO 2: SEQUÊNCIA ---
     elif st.session_state.etapa_cadastro == 2:
-        st.markdown("### 🔢 Passo 2 de 2: Etiqueta de Sequência (#A-1)")
+        st.markdown("### 🔢 Passo 2 de 2: Sequência (#A-1)")
         
-        metodo_2 = st.radio("Como quer enviar a Sequência?", ["📸 Câmera", "📁 Upload de Arquivo", "✍️ Digitar Manual"], horizontal=True, key="m2")
+        tipo_envio_s = st.radio("Como informar a Sequência?", ["📷 Tirar Foto / Upload", "✍️ Digitar Manual"], horizontal=True)
         
-        foto_seq = None
+        val_seq = None
         texto_seq = ""
         
-        if metodo_2 == "📸 Câmera":
-            foto_seq = st.camera_input("Tirar foto da Sequência", key="cam_2")
-        elif metodo_2 == "📁 Upload de Arquivo":
-            foto_seq = st.file_uploader("Selecionar foto da Sequência", type=["png", "jpg", "jpeg"], key="up_2")
+        if tipo_envio_s == "📷 Tirar Foto / Upload":
+            val_seq = st.file_uploader("Selecione ou tire a foto da etiqueta #A-1", type=["png", "jpg", "jpeg"], key="up_s")
         else:
             texto_seq = st.text_input("Digite a Sequência:", placeholder="Ex: #A-1")
 
+        st.markdown("")
         col_b1, col_b2 = st.columns(2)
         with col_b1:
             if st.button("⬅️ Voltar"):
                 st.session_state.etapa_cadastro = 1
                 st.rerun()
         with col_b2:
-            if st.button("📥 Salvar Pacote na Fila", type="primary"):
-                if foto_seq or texto_seq:
-                    is_manual_end = isinstance(st.session_state.temp_bytes_end, str)
-                    is_manual_seq = isinstance(texto_seq, str) and len(texto_seq) > 0
+            if st.button("📥 Salvar na Fila", type="primary"):
+                if val_seq or texto_seq:
+                    end_val = st.session_state.temp_end
+                    end_tipo = st.session_state.temp_end_tipo
                     
-                    st.session_state.pacotes.append({
-                        "Seq": texto_seq if is_manual_seq else "PENDENTE_PROCESSAR",
-                        "Rastreio": f"PKG_{datetime.now().strftime('%H%M%S')}",
-                        "Endereço": st.session_state.temp_bytes_end if is_manual_end else "Aguardando IA...",
+                    seq_val = val_seq.getvalue() if val_seq else texto_seq
+                    seq_tipo = "foto" if val_seq else "texto"
+                    
+                    # Monta o registro
+                    novo_pacote = {
+                        "Seq": seq_val if seq_tipo == "texto" else "PENDENTE_PROCESSAR",
+                        "Rastreio": f"PKG_{datetime.now().strftime('%H%M%S_%f')}",
+                        "Endereço": end_val if end_tipo == "texto" else "Aguardando IA...",
                         "CEP": "",
                         "Horário": datetime.now().strftime("%H:%M:%S"),
                         "Status": "Pendente",
-                        "bytes_end": None if is_manual_end else st.session_state.temp_bytes_end,
-                        "bytes_seq": None if is_manual_seq else (foto_seq.getvalue() if foto_seq else None)
-                    })
+                        "bytes_end": end_val if end_tipo == "foto" else None,
+                        "bytes_seq": seq_val if seq_tipo == "foto" else None
+                    }
+                    
+                    st.session_state.pacotes.append(novo_pacote)
                     
                     # Reseta para o próximo pacote
                     st.session_state.etapa_cadastro = 1
-                    st.session_state.temp_bytes_end = None
+                    st.session_state.temp_end = None
+                    st.session_state.temp_end_tipo = None
+                    
                     salvar_historico()
-                    st.success("Pacote adicionado com sucesso! Pronto para o próximo.")
+                    st.success("✅ Pacote salvo na fila com sucesso!")
                     st.rerun()
                 else:
-                    st.warning("Por favor, capture ou digite a sequência.")
+                    st.warning("⚠️ Insira a foto ou digite a sequência para salvar.")
 
-    # --- PROCESSAMENTO DA IA EM LOTE ---
-    pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq") == "PENDENTE_PROCESSAR" or "Aguardando" in p.get("Endereço", "")]
+    # --- PROCESSAR FILA COM IA ---
+    pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq"] == "PENDENTE_PROCESSAR" or "Aguardando" in p.get("Endereço", "")]
     
     if pendentes_IA:
         st.markdown("---")
         if st.button(f"⚡ Processar Fila com IA ({len(pendentes_IA)} pendentes)", type="primary", use_container_width=True):
-            with st.spinner("A IA está lendo as fotos..."):
+            with st.spinner("A IA está varrendo os pacotes..."):
                 try:
                     genai.configure(api_key=CHAVE_API)
                     model = genai.GenerativeModel('gemini-3.6-flash')
@@ -162,7 +174,7 @@ with aba_principal:
                             p.pop("bytes_seq", None)
                             
                     salvar_historico()
-                    st.success("Fila processada com sucesso!")
+                    st.success("Fila processada!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao processar: {e}")
