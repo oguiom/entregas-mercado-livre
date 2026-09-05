@@ -145,7 +145,7 @@ with aba_principal:
                     st.warning("⚠️ Insira a foto ou digite a sequência para salvar.")
 
     # --- PROCESSAR FILA COM IA ---
-    pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq"] == "PENDENTE_PROCESSAR" or "Aguardando" in p.get("Endereço", "")]
+    pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq") == "PENDENTE_PROCESSAR" or "Aguardando" in p.get("Endereço", "")]
     
     if pendentes_IA:
         st.markdown("---")
