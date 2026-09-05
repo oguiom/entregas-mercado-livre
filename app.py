@@ -53,7 +53,6 @@ with aba_principal:
     st.markdown("### 📸 Novo Pacote")
 
     with st.form("form_duplo_lote", clear_on_submit=True):
-        # Campos compactos empilhados para encaixar perfeitamente na tela menor do celular
         st.markdown("#### 📄 1. Endereço")
         tipo_origem_end = st.radio("Origem Endereço:", ["Câmera", "Upload"], key="origem_end", horizontal=True)
         foto_end = st.camera_input("Foto Endereço", key="cam_e") if tipo_origem_end == "Câmera" else st.file_uploader("Arquivo Endereço", type=["png", "jpg", "jpeg"], key="up_e")
@@ -82,7 +81,8 @@ with aba_principal:
             else:
                 st.warning("Envie ao menos uma foto.")
 
-    pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq"] == "PENDENTE_PROCESSAR"]
+    # Correção do parêntese feita aqui:
+    pendentes_IA = [p for p in st.session_state.pacotes if p.get("Seq") == "PENDENTE_PROCESSAR"]
     
     if pendentes_IA:
         st.markdown("---")
