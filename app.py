@@ -9,6 +9,7 @@ import io
 
 st.set_page_config(page_title="RODA ML GOM", layout="centered")
 
+# Correção feita aqui: aspas fechadas corretamente
 CHAVE_API = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 
 # CSS para customizar o container com rolagem e aparência mobile
@@ -30,7 +31,6 @@ st.markdown("""
 # --- CABEÇALHO COM LOGO DO MERCADO LIVRE E TÍTULO ---
 col_logo, col_titulo = st.columns([0.15, 0.85])
 with col_logo:
-    # Logo oficial amarela do Mercado Livre
     st.markdown("""
         <div style="background-color: #ffe600; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <span style="font-size: 28px;">🤝</span>
@@ -70,7 +70,6 @@ with st.container():
     st.markdown('<div class="scroll-container">', unsafe_allow_html=True)
     
     for i in range(1, NUM_linhas + 1):
-        # Mostra apenas linhas ativas ou as primeiras 15 para não travar a tela de uma vez, mas mantém o loop de 100
         cols = st.columns([0.08, 0.42, 0.42, 0.08])
         with cols[0]:
             st.markdown(f"**#{i}**")
