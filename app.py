@@ -5,11 +5,12 @@ import google.generativeai as genai
 from PIL import Image
 import json
 import urllib.parse
+import os
 import io
 
-st.set_page_config(page_title="RODA ML GOM", layout="centered")
+st.set_page_config(page_title="ROTA Mercado Livre - GOM", layout="centered")
 
-# Correção feita aqui: aspas fechadas corretamente
+# Correção: módulo 'os' incluído e aspas/parênteses balanceados corretamente
 CHAVE_API = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 
 # CSS para customizar o container com rolagem e aparência mobile
@@ -111,7 +112,7 @@ if st.button("⚡ Analisar Rota por IA (Transformar tudo em texto)", type="prima
                     if item["img_seq"]: imgs.append(Image.open(io.BytesIO(item["img_seq"])))
                     
                     if imgs:
-                        resp = model.generate_content(["Extraia rua, numero, bairro, cidade, estado, cep e sequencia (#A-1) em JSON puro com as chaves exatas: rua, numero, bairro, cidade, estado, cep, sequencia.", *imgs])
+                        resp = model.generate_content(["Extraia rua, numero, bairro, cidade, estado, cep e sequencia (#A-1) em JSON puro com las chaves exatas: rua, numero, bairro, cidade, estado, cep, sequencia.", *imgs])
                         dados = json.loads(resp.text.strip().replace("```json", "").replace("```", ""))
                         
                         r_seq = dados.get('sequencia') or f"#A-{i}"
