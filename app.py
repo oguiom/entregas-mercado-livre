@@ -12,22 +12,38 @@ st.set_page_config(page_title="ROTA Mercado Livre - GOM", layout="centered")
 
 CHAVE_API = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 
-# CSS ajustado para forçar 3 colunas perfeitas e compactas no celular
+# CSS otimizado para forçar os elementos na mesma linha e caixa menor com scroll
 st.markdown("""
     <style>
         .stButton button { width: 100%; border-radius: 6px; font-weight: bold; }
         .block-container { padding-top: 0.5rem; padding-bottom: 2rem; max-width: 800px; }
+        
+        /* Bloco menor com barra de rolagem dedicada */
         .scroll-container {
-            max-height: 480px;
+            max-height: 380px;
             overflow-y: auto;
-            padding: 5px;
-            border: 1px solid #333;
+            padding: 8px;
+            border: 1px solid #444;
             border-radius: 8px;
             background-color: rgba(255, 255, 255, 0.02);
         }
-        /* Força alinhamento em 3 colunas compactas na mesma linha no mobile */
-        div[data-testid="column"] {
+        
+        /* Força os elementos da linha a ficarem perfeitamente na horizontal no mobile */
+        [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 4px !important;
+        }
+        [data-testid="column"] {
+            width: auto !important;
+            flex: 1 1 0% !important;
+            min-width: 0px !important;
             padding: 0px 2px !important;
+        }
+        /* Ajusta o tamanho dos botões de upload na linha */
+        .row-widget.stFileUploader {
+            font-size: 11px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -66,22 +82,22 @@ def limpar_tudo():
     st.rerun()
 
 st.markdown("### 📋 Grade de Cadastro (1 a 100)")
-st.info("Em cada linha: 📄 Endereço | 🔢 Etiqueta | ❌ Excluir")
+st.info("Linha: 📄 Endereço | 🔢 Etiqueta | ❌ Excluir")
 
-# Container com rolagem vertical para as 100 linhas
+# Bloco menor com barra de rolagem dedicada contendo as 100 opções
 with st.container():
     st.markdown('<div class="scroll-container">', unsafe_allow_html=True)
     
     for i in range(1, NUM_linhas + 1):
-        # 3 Colunas na mesma linha: [Upload Endereço, Upload Etiqueta, Botão X]
-        cols = st.columns([0.45, 0.45, 0.10])
+        # 3 colunas estritamente na mesma linha horizontal: [Endereço, Etiqueta, Botão X]
+        cols = st.columns([0.43, 0.43, 0.14])
         
         with cols[0]:
-            up_e = st.file_uploader(f"End #{i}", type=["png", "jpg", "jpeg"], key=f"end_{i}", label_visibility="collapsed")
+            up_e = st.file_uploader(f"E{i}", type=["png", "jpg", "jpeg"], key=f"end_{i}", label_visibility="collapsed")
             if up_e:
                 st.session_state.linhas_pacotes[i]["img_end"] = up_e.getvalue()
         with cols[1]:
-            up_s = st.file_uploader(f"Seq #{i}", type=["png", "jpg", "jpeg"], key=f"seq_{i}", label_visibility="collapsed")
+            up_s = st.file_uploader(f"S{i}", type=["png", "jpg", "jpeg"], key=f"seq_{i}", label_visibility="collapsed")
             if up_s:
                 st.session_state.linhas_pacotes[i]["img_seq"] = up_s.getvalue()
         with cols[2]:
@@ -140,7 +156,7 @@ if st.button("⚡ Analisar Rota por IA (Transformar tudo em texto)", type="prima
         except Exception as e:
             st.error(f"Erro ao processar com IA: {e}")
 
-# --- EXIBIÇÃO DA LISTA PROCESSADA E ESCOLHA DE MAPA (WAZE / GOOGLE MAPS) ---
+# --- EXIBIÇÃO DA LISTA PROCESSADA E ESCOLHA DE MAPA ---
 st.markdown("---")
 st.markdown("### 📋 Lista de Entregas Organizada")
 
