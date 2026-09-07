@@ -10,21 +10,24 @@ import io
 
 st.set_page_config(page_title="ROTA Mercado Livre - GOM", layout="centered")
 
-# Correção: módulo 'os' incluído e aspas/parênteses balanceados corretamente
 CHAVE_API = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 
-# CSS para customizar o container com rolagem e aparência mobile
+# CSS ajustado para forçar 3 colunas perfeitas e compactas no celular
 st.markdown("""
     <style>
         .stButton button { width: 100%; border-radius: 6px; font-weight: bold; }
         .block-container { padding-top: 0.5rem; padding-bottom: 2rem; max-width: 800px; }
         .scroll-container {
-            max-height: 450px;
+            max-height: 480px;
             overflow-y: auto;
-            padding: 10px;
+            padding: 5px;
             border: 1px solid #333;
             border-radius: 8px;
             background-color: rgba(255, 255, 255, 0.02);
+        }
+        /* Força alinhamento em 3 colunas compactas na mesma linha no mobile */
+        div[data-testid="column"] {
+            padding: 0px 2px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -33,16 +36,15 @@ st.markdown("""
 col_logo, col_titulo = st.columns([0.15, 0.85])
 with col_logo:
     st.markdown("""
-        <div style="background-color: #ffe600; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <span style="font-size: 28px;">🤝</span>
+        <div style="background-color: #ffe600; width: 45px; height: 45px; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <span style="font-size: 24px;">🤝</span>
         </div>
     """, unsafe_allow_html=True)
 with col_titulo:
-    st.markdown("<h2 style='margin: 0; padding-top: 5px; color: #ffe600;'>RODA ML GOM</h2>", unsafe_allow_html=True)
+    st.markdown("<h3 style='margin: 0; padding-top: 5px; color: #ffe600;'>RODA ML GOM</h3>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# Inicializa o estado para 100 linhas de pacotes
 NUM_linhas = 100
 if 'linhas_pacotes' not in st.session_state:
     st.session_state.linhas_pacotes = {}
@@ -64,25 +66,25 @@ def limpar_tudo():
     st.rerun()
 
 st.markdown("### 📋 Grade de Cadastro (1 a 100)")
-st.info("Preencha as fotos de Endereço e Etiqueta nas linhas desejadas. O sistema aceita a câmera nativa ou upload.")
+st.info("Em cada linha: 📄 Endereço | 🔢 Etiqueta | ❌ Excluir")
 
 # Container com rolagem vertical para as 100 linhas
 with st.container():
     st.markdown('<div class="scroll-container">', unsafe_allow_html=True)
     
     for i in range(1, NUM_linhas + 1):
-        cols = st.columns([0.08, 0.42, 0.42, 0.08])
+        # 3 Colunas na mesma linha: [Upload Endereço, Upload Etiqueta, Botão X]
+        cols = st.columns([0.45, 0.45, 0.10])
+        
         with cols[0]:
-            st.markdown(f"**#{i}**")
-        with cols[1]:
-            up_e = st.file_uploader(f"End {i}", type=["png", "jpg", "jpeg"], key=f"end_{i}", label_visibility="collapsed")
+            up_e = st.file_uploader(f"End #{i}", type=["png", "jpg", "jpeg"], key=f"end_{i}", label_visibility="collapsed")
             if up_e:
                 st.session_state.linhas_pacotes[i]["img_end"] = up_e.getvalue()
-        with cols[2]:
-            up_s = st.file_uploader(f"Seq {i}", type=["png", "jpg", "jpeg"], key=f"seq_{i}", label_visibility="collapsed")
+        with cols[1]:
+            up_s = st.file_uploader(f"Seq #{i}", type=["png", "jpg", "jpeg"], key=f"seq_{i}", label_visibility="collapsed")
             if up_s:
                 st.session_state.linhas_pacotes[i]["img_seq"] = up_s.getvalue()
-        with cols[3]:
+        with cols[2]:
             if st.button("❌", key=f"del_{i}"):
                 st.session_state.linhas_pacotes[i] = {"img_end": None, "img_seq": None, "resultado_ia": None}
                 st.rerun()
@@ -112,7 +114,7 @@ if st.button("⚡ Analisar Rota por IA (Transformar tudo em texto)", type="prima
                     if item["img_seq"]: imgs.append(Image.open(io.BytesIO(item["img_seq"])))
                     
                     if imgs:
-                        resp = model.generate_content(["Extraia rua, numero, bairro, cidade, estado, cep e sequencia (#A-1) em JSON puro com las chaves exatas: rua, numero, bairro, cidade, estado, cep, sequencia.", *imgs])
+                        resp = model.generate_content(["Extraia rua, numero, bairro, cidade, estado, cep e sequencia (#A-1) em JSON puro com as chaves exatas: rua, numero, bairro, cidade, estado, cep, sequencia.", *imgs])
                         dados = json.loads(resp.text.strip().replace("```json", "").replace("```", ""))
                         
                         r_seq = dados.get('sequencia') or f"#A-{i}"
@@ -138,7 +140,7 @@ if st.button("⚡ Analisar Rota por IA (Transformar tudo em texto)", type="prima
         except Exception as e:
             st.error(f"Erro ao processar com IA: {e}")
 
-# --- EXIBIÇÃO DA LISTA PROCESSADA E WAZE ---
+# --- EXIBIÇÃO DA LISTA PROCESSADA E ESCOLHA DE MAPA (WAZE / GOOGLE MAPS) ---
 st.markdown("---")
 st.markdown("### 📋 Lista de Entregas Organizada")
 
@@ -163,8 +165,16 @@ if pacotes_validos:
 
     if not pendentes.empty:
         st.markdown("---")
+        st.markdown("#### 🧭 Navegação para o Próximo Destino")
+        
+        escolha_mapa = st.radio("Escolha o aplicativo de mapas:", ["Waze", "Google Maps"], horizontal=True)
         proximo_end = urllib.parse.quote(str(pendentes.iloc[0]['Endereço']))
-        link_waze = f"https://waze.com/ul?q={proximo_end}&navigate=yes"
-        st.link_button(f"📍 Abrir Waze (Próximo: {pendentes.iloc[0]['Seq']})", link_waze, type="primary", use_container_width=True)
+        
+        if escolha_mapa == "Waze":
+            link_mapa = f"https://waze.com/ul?q={proximo_end}&navigate=yes"
+        else:
+            link_mapa = f"https://www.google.com/maps/search/?api=1&query={proximo_end}"
+            
+        st.link_button(f"🚀 Navegar para Próximo ({pendentes.iloc[0]['Seq']}) via {escolha_mapa}", link_mapa, type="primary", use_container_width=True)
 else:
     st.info("Nenhum pacote processado pela IA ainda. Envie as fotos nas linhas acima e clique em 'Analisar Rota por IA'.")
